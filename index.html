@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>coolrack</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #11272f;
+    --panel: #17323c;
+    --panel-2: #1c3b46;
+    --line: #2a4a55;
+    --text: #e8f0f2;
+    --muted: #8aa6b0;
+    --hot: #ee4b3a;
+    --pipe: 12px;
+    --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --figures: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 40px; margin-bottom: 26px; }
+  h1 { font-family: var(--figures); font-weight: 600; font-size: 34px; line-height: 1; margin: 0; letter-spacing: 0.01em; }
+  h1 small { display: block; font-family: var(--body); font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 6px; letter-spacing: 0; }
+  .readouts { display: flex; flex-wrap: wrap; gap: 8px 32px; margin-left: auto; }
+  .readout { min-width: 84px; }
+  .readout b { display: block; font-family: var(--figures); font-weight: 600; font-size: 30px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .readout b i { font-style: normal; font-size: 16px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+  .readout span { color: var(--muted); font-size: 13px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+
+  /* ---------- the rack: manifolds either side, servers between ---------- */
+  .rack {
+    display: grid;
+    grid-template-columns: var(--pipe) 30px minmax(0, 1fr) 30px var(--pipe);
+    row-gap: 8px;
+  }
+  .manifold { grid-row: 1 / span 9; border-radius: 6px; }
+  .manifold.supply { grid-column: 1; }
+  .manifold.return { grid-column: 5; }
+  .stub { align-self: center; height: var(--pipe); }
+  .stub.in { grid-column: 2; }
+  .stub.out { grid-column: 4; }
+
+  .pipe { position: relative; background: var(--c, #3aa8e6); transition: background-color .4s linear; }
+  .pipe::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; opacity: .32;
+    animation: var(--anim) var(--dur, 1s) linear infinite;
+    animation-play-state: var(--play, running);
+  }
+  .pipe.up::after, .pipe.down::after {
+    background-image: repeating-linear-gradient(to bottom, rgba(255,255,255,.9) 0 3px, transparent 3px 20px);
+  }
+  .pipe.right::after, .pipe.left::after {
+    background-image: repeating-linear-gradient(to right, rgba(255,255,255,.9) 0 3px, transparent 3px 20px);
+  }
+  .pipe.up { --anim: flow-up; } .pipe.down { --anim: flow-down; }
+  .pipe.right { --anim: flow-right; } .pipe.left { --anim: flow-left; }
+  @keyframes flow-up { from { background-position: 0 20px; } to { background-position: 0 0; } }
+  @keyframes flow-down { from { background-position: 0 0; } to { background-position: 0 20px; } }
+  @keyframes flow-right { from { background-position: 0 0; } to { background-position: 20px 0; } }
+  @keyframes flow-left { from { background-position: 20px 0; } to { background-position: 0 0; } }
+
+  .server {
+    grid-column: 3;
+    display: grid;
+    grid-template-columns: 108px 92px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 16px;
+    padding: 9px 14px 9px 16px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--c, #3aa8e6) 16%, var(--panel));
+    box-shadow: inset 4px 0 0 var(--c, #3aa8e6);
+    transition: background-color .4s linear, box-shadow .4s linear;
+  }
+  .server .name { font-weight: 600; }
+  .server .name em { display: block; font-style: normal; font-weight: 400; font-size: 13px; color: var(--muted); }
+  .server .chip { font-family: var(--figures); font-weight: 600; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .server .chip i { font-style: normal; font-size: 16px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+  .server .detail { min-width: 0; }
+  .server .numbers { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .server .numbers b { color: var(--text); font-weight: 500; }
+  .gauge { position: relative; height: 5px; margin-top: 7px; border-radius: 3px; background: rgba(255,255,255,.09); }
+  .gauge div { height: 100%; border-radius: 3px; background: var(--c, #3aa8e6); width: 0; transition: width .3s linear, background-color .4s linear; }
+  .gauge::after { content: ""; position: absolute; right: 0; top: -3px; bottom: -3px; width: 2px; background: var(--hot); border-radius: 1px; }
+  .flags { display: inline-flex; gap: 6px; margin-left: 8px; white-space: nowrap; }
+  .flag { font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--hot); color: #fff; }
+  .flag.quiet { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--muted); }
+  .server.throttled { animation: alarm 1.1s ease-in-out infinite; }
+  @keyframes alarm { 50% { box-shadow: inset 4px 0 0 var(--c), 0 0 0 2px var(--hot); } }
+  .server .actions { display: flex; gap: 6px; }
+
+  /* ---------- the CDU: pump and heat exchanger under the rack ---------- */
+  .cdu { grid-column: 2 / span 3; grid-row: 9; display: flex; align-items: center; margin-top: 10px; }
+  .cdu .run { flex: 1 1 20px; height: var(--pipe); min-width: 14px; }
+  .unit { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
+  .unit strong { display: block; font-weight: 600; }
+  .unit span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .unit.failed { border-color: var(--hot); }
+  .impeller { width: 34px; height: 34px; flex: none; animation: spin var(--dur, 1s) linear infinite; animation-play-state: var(--play, running); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .plates { width: 34px; height: 34px; flex: none; }
+
+  .trend { margin-top: 26px; }
+  .trend p { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+  .trend .key { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin: 0 5px 0 12px; }
+  .trend .key:first-of-type { margin-left: 0; }
+  canvas { display: block; width: 100%; height: 150px; background: var(--panel); border-radius: 8px; }
+  canvas#pump-trend { height: 64px; margin-top: 8px; }
+
+  /* ---------- operator panel ---------- */
+  aside { display: grid; gap: 22px; }
+  aside h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; }
+  aside section { border-top: 1px solid var(--line); padding-top: 16px; }
+  aside section:first-child { border-top: 0; padding-top: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hint { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+
+  button {
+    font: inherit; font-size: 13px; font-weight: 500; color: var(--text);
+    background: transparent; border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 11px; cursor: pointer; white-space: nowrap;
+    transition: background-color .15s, border-color .15s;
+  }
+  button:hover { background: rgba(255,255,255,.06); border-color: var(--muted); }
+  button:focus-visible, input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  button.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  button.primary:hover { background: #fff; }
+  button.fault { border-color: color-mix(in srgb, var(--hot) 60%, var(--line)); }
+  button[aria-pressed="true"] { background: var(--hot); border-color: var(--hot); color: #fff; }
+  button.on { background: rgba(255,255,255,.12); border-color: var(--muted); }
+  button.toggle[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: 600; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 14px; }
+  .modes button { border-radius: 6px 0 0 6px; }
+  .modes button + button { border-radius: 0 6px 6px 0; border-left: 0; }
+  label.slider.off { opacity: .45; }
+  .saving { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .saving b { color: var(--text); font-family: var(--figures); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  aside button { padding: 8px 13px; font-size: 14px; }
+
+  label.slider { display: block; margin-bottom: 12px; }
+  label.slider span { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  label.slider b { font-family: var(--figures); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--text); }
+
+  ol.log { list-style: none; margin: 0; padding: 0; font-size: 13px; display: grid; gap: 5px; }
+  ol.log li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; color: var(--muted); }
+  ol.log li:first-child { color: var(--text); }
+  ol.log time { font-variant-numeric: tabular-nums; }
+
+  .offline { display: none; background: var(--hot); color: #fff; padding: 10px 14px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; }
+  .offline code { font: inherit; font-weight: 600; background: rgba(0,0,0,.2); padding: 1px 6px; border-radius: 4px; }
+  body.offline-state .offline { display: block; }
+
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    .readouts { margin-left: 0; }
+  }
+  @media (max-width: 640px) {
+    .page { padding: 20px 12px 40px; }
+    .rack { grid-template-columns: 10px 12px minmax(0, 1fr) 12px 10px; --pipe: 10px; }
+    .server { grid-template-columns: 1fr auto; }
+    .server .detail, .server .actions { grid-column: 1 / -1; }
+    .cdu { flex-wrap: wrap; gap: 8px; }
+    .cdu .run { display: none; }
+    .unit { flex: 1 1 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pipe::after, .impeller, .server.throttled { animation: none; }
+    .server.throttled { box-shadow: inset 4px 0 0 var(--c), 0 0 0 2px var(--hot); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="offline" role="alert">The engine is not running. Start it with <code>python3 server.py</code> and this page reconnects by itself.</div>
+
+  <header>
+    <h1>coolrack<small>Eight liquid-cooled servers on one coolant loop, simulated live</small></h1>
+    <div class="readouts">
+      <div class="readout"><b id="r-load">0<i>kW</i></b><span>Power drawn</span></div>
+      <div class="readout"><b id="r-heat">0<i>kW</i></b><span>Heat removed</span></div>
+      <div class="readout"><b id="r-supply">0<i>°C</i></b><span>Coolant in</span></div>
+      <div class="readout"><b id="r-return">0<i>°C</i></b><span>Coolant out</span></div>
+      <div class="readout"><b id="r-flow">0<i>L/min</i></b><span>Flow</span></div>
+      <div class="readout"><b id="r-hottest">0<i>°C</i></b><span>Hottest chip</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main>
+      <div class="rack" id="rack">
+        <div class="pipe up manifold supply" id="m-supply" title="Supply manifold: cooled coolant going up to the servers"></div>
+        <div class="pipe down manifold return" id="m-return" title="Return manifold: warmed coolant coming back down"></div>
+        <div class="cdu">
+          <div class="pipe left run" id="run-a"></div>
+          <div class="unit" id="pump">
+            <svg class="impeller" viewBox="0 0 34 34" aria-hidden="true">
+              <circle cx="17" cy="17" r="15.5" fill="none" stroke="#8aa6b0" stroke-width="1.5"/>
+              <g fill="#e8f0f2"><path d="M17 17 C13 11 15 5 20 3 C21 9 21 13 17 17Z"/><path d="M17 17 C24 15 29 19 30 24 C24 23 20 22 17 17Z"/><path d="M17 17 C14 24 8 26 4 23 C9 19 12 17 17 17Z"/></g>
+              <circle cx="17" cy="17" r="2.6" fill="#11272f" stroke="#e8f0f2" stroke-width="1.5"/>
+            </svg>
+            <div><strong>Pump</strong><span id="pump-text">100% speed</span></div>
+          </div>
+          <div class="pipe left run" id="run-b"></div>
+          <div class="unit">
+            <svg class="plates" viewBox="0 0 34 34" aria-hidden="true">
+              <rect x="2" y="4" width="30" height="26" rx="3" fill="none" stroke="#8aa6b0" stroke-width="1.5"/>
+              <path d="M8 4v26M13 4v26M18 4v26M23 4v26M28 4v26" stroke="#e8f0f2" stroke-width="1.5"/>
+            </svg>
+            <div><strong>Heat exchanger</strong><span id="hx-text">Building water at 25 °C</span></div>
+          </div>
+          <div class="pipe left run" id="run-c"></div>
+        </div>
+      </div>
+
+      <div class="trend">
+        <p>Last two minutes
+          <span class="key" style="background:#e8f0f2"></span>Hottest chip
+          <span class="key" style="background:#f2a44e"></span>Coolant out
+          <span class="key" style="background:#3aa8e6"></span>Coolant in
+          <span class="key" style="background:#ee4b3a"></span>Chip limit
+          <span class="key" id="target-key" style="background:#8aa6b0"></span><span id="target-key-text">Target</span>
+        </p>
+        <canvas id="trend" width="1600" height="300" aria-label="Trend of hottest chip and coolant temperatures"></canvas>
+        <canvas id="pump-trend" width="1600" height="128" aria-label="Trend of pump speed"></canvas>
+      </div>
+    </main>
+
+    <aside>
+      <section>
+        <h2>Workload</h2>
+        <div class="row">
+          <button class="primary" data-act="jobs-on">Run jobs on all servers</button>
+          <button data-act="jobs-off">Stop all jobs</button>
+        </div>
+        <p class="hint">Switch the pump to automatic, then run all jobs and watch the pump chase the temperature.</p>
+      </section>
+      <section>
+        <h2>Pump</h2>
+        <div class="modes" role="group" aria-label="Pump control">
+          <button class="toggle" id="mode-manual" aria-pressed="true">By hand</button>
+          <button class="toggle" id="mode-auto" aria-pressed="false">Automatic</button>
+        </div>
+        <label class="slider" id="speed-wrap"><span>Speed <b id="speed-label">100%</b></span>
+          <input type="range" id="pump-speed" min="10" max="100" step="1" value="100"></label>
+        <label class="slider" id="target-wrap"><span>Hold hottest chip at <b id="target-label">60 °C</b></span>
+          <input type="range" id="target" min="45" max="80" step="1" value="60"></label>
+        <p class="saving">Pump is using <b id="pump-watts">150 W</b> of 150 W</p>
+        <button class="fault" id="pump-fail" aria-pressed="false">Fail the pump</button>
+      </section>
+      <section>
+        <h2>Clock</h2>
+        <div class="row" id="clock">
+          <button data-speed="1">Real time</button>
+          <button data-speed="4">4× faster</button>
+          <button data-speed="8">8× faster</button>
+        </div>
+      </section>
+      <section>
+        <h2>Events</h2>
+        <ol class="log" id="log"></ol>
+        <p class="hint"><button data-act="reset">Reset the rack</button></p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+// This page only draws what the engine reports. No physics lives here.
+
+const $ = id => document.getElementById(id);
+const rackEl = $("rack");
+let rows = [];        // DOM handles for each server
+let history = [];     // recent readings for the trend chart
+let latest = null;
+
+// Thermal colour scale: cold coolant blue through to chip-limit red.
+const STOPS = [[25,[58,168,230]],[42,[143,196,217]],[58,[242,193,78]],[74,[242,138,60]],[90,[238,75,58]]];
+function heat(t) {
+  if (t <= STOPS[0][0]) return rgb(STOPS[0][1]);
+  for (let i = 1; i < STOPS.length; i++) {
+    const [t1, c1] = STOPS[i], [t0, c0] = STOPS[i - 1];
+    if (t <= t1) { const k = (t - t0) / (t1 - t0); return rgb(c0.map((v, j) => v + (c1[j] - v) * k)); }
+  }
+  return rgb(STOPS[STOPS.length - 1][1]);
+}
+const rgb = c => `rgb(${c.map(Math.round).join(",")})`;
+
+function send(action) {
+  fetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action) });
+}
+
+// How fast the dashes move in a pipe, from the fraction of normal flow.
+function flowStyle(el, fraction, base) {
+  if (fraction < 0.02) { el.style.setProperty("--play", "paused"); return; }
+  el.style.setProperty("--play", "running");
+  el.style.setProperty("--dur", (base / fraction).toFixed(2) + "s");
+}
+
+function buildServers(count) {
+  for (let i = 0; i < count; i++) {
+    const n = i + 1, row = i + 1;
+    const stubIn = document.createElement("div");
+    stubIn.className = "pipe right stub in"; stubIn.style.gridRow = row;
+    const stubOut = document.createElement("div");
+    stubOut.className = "pipe right stub out"; stubOut.style.gridRow = row;
+    const card = document.createElement("div");
+    card.className = "server"; card.style.gridRow = row;
+    card.innerHTML = `
+      <div class="name">Server ${n}<em class="state">Idle</em></div>
+      <div class="chip"><span class="t">0.0</span><i>°C</i></div>
+      <div class="detail">
+        <div class="numbers"></div>
+        <div class="gauge" title="Chip temperature against its limit"><div></div></div>
+      </div>
+      <div class="actions">
+        <button class="job">Run job</button>
+        <button class="fault block" aria-pressed="false">Block plate</button>
+      </div>`;
+    rackEl.append(stubIn, card, stubOut);
+    const h = {
+      card, stubIn, stubOut,
+      state: card.querySelector(".state"), t: card.querySelector(".t"),
+      numbers: card.querySelector(".numbers"), bar: card.querySelector(".gauge div"),
+      job: card.querySelector(".job"), block: card.querySelector(".block"),
+    };
+    h.job.onclick = () => send({ type: "job", server: n, on: !latest.servers[i].job });
+    h.block.onclick = () => send({ type: "block", server: n, on: !latest.servers[i].blocked });
+    rows.push(h);
+  }
+}
+
+function setReadout(id, value, unit) { $(id).innerHTML = `${value}<i>${unit}</i>`; }
+
+function render(s) {
+  latest = s;
+  if (!rows.length) buildServers(s.servers.length);
+
+  const fraction = s.flow / s.nominal_flow;
+  const perServer = s.nominal_flow / s.servers.length;
+  const hottest = Math.max(...s.servers.map(x => x.chip));
+
+  setReadout("r-load", (s.it_power / 1000).toFixed(1), "kW");
+  setReadout("r-heat", (s.heat_rejected / 1000).toFixed(1), "kW");
+  setReadout("r-supply", s.supply.toFixed(1), "°C");
+  setReadout("r-return", s.return.toFixed(1), "°C");
+  setReadout("r-flow", (s.flow * 60).toFixed(1), "L/min");
+  setReadout("r-hottest", hottest.toFixed(1), "°C");
+  $("r-hottest").style.color = hottest > s.throttle_at - 10 ? heat(hottest) : "";
+
+  const cold = heat(s.supply), warm = heat(s.return);
+  for (const id of ["m-supply", "run-a", "run-b"]) { $(id).style.setProperty("--c", cold); flowStyle($(id), fraction, 0.9); }
+  for (const id of ["m-return", "run-c"]) { $(id).style.setProperty("--c", warm); flowStyle($(id), fraction, 0.9); }
+
+  s.servers.forEach((sv, i) => {
+    const h = rows[i], c = heat(sv.chip);
+    h.card.style.setProperty("--c", c);
+    h.card.classList.toggle("throttled", sv.throttled);
+    h.t.textContent = sv.chip.toFixed(1);
+    h.state.textContent = sv.throttled ? "Throttled" : sv.job ? "Running a job" : "Idle";
+    h.numbers.innerHTML =
+      `<b>${sv.power}</b> W in, <b>${(sv.flow * 60).toFixed(2)}</b> L/min, leaves at <b>${sv.out.toFixed(1)}</b> °C` +
+      (sv.throttled || sv.blocked ? `<span class="flags">${sv.throttled ? '<span class="flag">Power halved</span>' : ""}${sv.blocked ? '<span class="flag quiet">Plate blocked</span>' : ""}</span>` : "");
+    h.bar.style.width = Math.max(0, Math.min(100, (sv.chip - 25) / (s.throttle_at - 25) * 100)) + "%";
+    h.job.textContent = sv.job ? "Stop job" : "Run job";
+    h.job.classList.toggle("on", sv.job);
+    h.block.textContent = sv.blocked ? "Clear plate" : "Block plate";
+    h.block.setAttribute("aria-pressed", sv.blocked);
+    h.stubIn.style.setProperty("--c", cold);
+    h.stubOut.style.setProperty("--c", heat(sv.out));
+    flowStyle(h.stubIn, sv.flow / perServer, 0.7);
+    flowStyle(h.stubOut, sv.flow / perServer, 0.7);
+  });
+
+  const pump = $("pump");
+  pump.classList.toggle("failed", s.pump_failed);
+  flowStyle(pump.querySelector(".impeller"), fraction, 1.1);
+  $("pump-text").textContent = s.pump_failed
+    ? `Failing, ${(s.flow * 60).toFixed(1)} L/min`
+    : `${Math.round(s.pump_speed * 100)}% speed, ${(s.flow * 60).toFixed(1)} L/min, ${Math.round(s.pump_power)} W`;
+  $("hx-text").textContent = `Building water at ${s.facility} °C, taking ${(s.heat_rejected / 1000).toFixed(1)} kW`;
+
+  const fail = $("pump-fail");
+  fail.textContent = s.pump_failed ? "Repair the pump" : "Fail the pump";
+  fail.setAttribute("aria-pressed", s.pump_failed);
+  if (s.auto || document.activeElement !== $("pump-speed")) $("pump-speed").value = Math.round(s.pump_speed * 100);
+  $("speed-label").textContent = Math.round(s.pump_speed * 100) + "%";
+  $("pump-speed").disabled = s.auto;
+  $("speed-wrap").classList.toggle("off", s.auto);
+  $("target-wrap").classList.toggle("off", !s.auto);
+  $("mode-auto").setAttribute("aria-pressed", s.auto);
+  $("mode-manual").setAttribute("aria-pressed", !s.auto);
+  if (document.activeElement !== $("target")) $("target").value = s.target;
+  $("target-label").textContent = s.target + " °C";
+  $("pump-watts").textContent = Math.round(s.pump_power) + " W";
+  $("target-key").style.display = $("target-key-text").style.display = s.auto ? "" : "none";
+  document.querySelectorAll("#clock button").forEach(b => b.classList.toggle("on", Number(b.dataset.speed) === s.speed));
+
+  $("log").innerHTML = s.events.slice().reverse().map(e => `<li><time>${clock(e.t)}</time><span>${e.msg}</span></li>`).join("");
+
+  if (!history.length || s.time < history[history.length - 1].t) history = [];
+  history.push({ t: s.time, chip: hottest, out: s.return, in: s.supply, pump: s.pump_speed * 100 });
+  while (history.length && s.time - history[0].t > 120) history.shift();
+  drawTrend(s.throttle_at, s.auto ? s.target : null);
+  drawPump();
+}
+
+function clock(t) { const m = Math.floor(t / 60), sec = Math.floor(t % 60); return `${m}:${String(sec).padStart(2, "0")}`; }
+
+function drawPump() {
+  const cv = $("pump-trend"), g = cv.getContext("2d"), W = cv.width, H = cv.height, pad = 44;
+  const now = history[history.length - 1].t;
+  const x = t => pad + (1 - (now - t) / 120) * (W - pad - 16);
+  const y = v => H - 14 - v / 100 * (H - 28);
+  g.clearRect(0, 0, W, H);
+  g.font = "22px Barlow, system-ui, sans-serif"; g.fillStyle = "#8aa6b0"; g.textBaseline = "middle";
+  g.fillText("Pump", 8, 26); g.fillText("speed", 8, 54); g.textAlign = "right";
+  g.fillText(Math.round(history[history.length - 1].pump) + "%", W - 22, 26); g.textAlign = "left";
+  g.beginPath();
+  history.forEach((p, i) => i ? g.lineTo(x(p.t), y(p.pump)) : g.moveTo(x(p.t), y(p.pump)));
+  g.strokeStyle = "#e8f0f2"; g.lineWidth = 3; g.lineJoin = "round"; g.stroke();
+  g.lineTo(x(now), y(0)); g.lineTo(x(history[0].t), y(0)); g.closePath();
+  g.fillStyle = "rgba(232,240,242,.10)"; g.fill();
+}
+
+function drawTrend(limit, target) {
+  const cv = $("trend"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  const lo = 20, hi = 100, pad = 44;
+  const y = v => H - 24 - (v - lo) / (hi - lo) * (H - 48);
+  const now = history[history.length - 1].t;
+  const x = t => pad + (1 - (now - t) / 120) * (W - pad - 16);
+  g.clearRect(0, 0, W, H);
+  g.font = "22px Barlow, system-ui, sans-serif"; g.fillStyle = "#8aa6b0"; g.textBaseline = "middle";
+  g.strokeStyle = "rgba(255,255,255,.07)"; g.lineWidth = 2;
+  for (const v of [30, 50, 70, 90]) {
+    g.beginPath(); g.moveTo(pad, y(v)); g.lineTo(W - 16, y(v)); g.stroke();
+    g.fillText(v, 8, y(v));
+  }
+  g.strokeStyle = "#ee4b3a"; g.setLineDash([10, 10]);
+  g.beginPath(); g.moveTo(pad, y(limit)); g.lineTo(W - 16, y(limit)); g.stroke();
+  if (target !== null) {
+    g.strokeStyle = "#8aa6b0"; g.setLineDash([4, 8]);
+    g.beginPath(); g.moveTo(pad, y(target)); g.lineTo(W - 16, y(target)); g.stroke();
+  }
+  g.setLineDash([]);
+  for (const [key, colour, width] of [["in", "#3aa8e6", 3], ["out", "#f2a44e", 3], ["chip", "#e8f0f2", 4]]) {
+    g.strokeStyle = colour; g.lineWidth = width; g.lineJoin = "round"; g.beginPath();
+    history.forEach((p, i) => i ? g.lineTo(x(p.t), y(p[key])) : g.moveTo(x(p.t), y(p[key])));
+    g.stroke();
+  }
+}
+
+// ----- controls -----
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.act === "jobs-on") send({ type: "job", server: "all", on: true });
+  if (b.dataset.act === "jobs-off") send({ type: "job", server: "all", on: false });
+  if (b.dataset.act === "reset") send({ type: "reset" });
+  if (b.dataset.speed) send({ type: "speed", value: Number(b.dataset.speed) });
+});
+$("pump-fail").onclick = () => send({ type: "pump_fail", on: !latest.pump_failed });
+$("mode-auto").onclick = () => send({ type: "auto", on: true });
+$("mode-manual").onclick = () => send({ type: "auto", on: false });
+$("target").oninput = e => { $("target-label").textContent = e.target.value + " °C"; send({ type: "target", value: Number(e.target.value) }); };
+$("pump-speed").oninput = e => { $("speed-label").textContent = e.target.value + "%"; send({ type: "pump_speed", value: e.target.value / 100 }); };
+
+// ----- live connection to the engine -----
+const stream = new EventSource("/stream");
+stream.onmessage = e => { document.body.classList.remove("offline-state"); render(JSON.parse(e.data)); };
+stream.onerror = () => document.body.classList.add("offline-state");
+</script>
+</body>
+</html>
